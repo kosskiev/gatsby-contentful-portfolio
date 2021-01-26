@@ -1,0 +1,49 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI-CD-to-AWS-ElastickBeastalk
+env: 
+  S3_BACKET_NAME     : "gatsby-bucket"
+  ENVIREMENT_NAME    : "gatsby-env"
+  DEPLOY_PACKAGE_NAME: "gatsby_app_${{ github.sha }}"
+  AWS_REGION_NAME    : "eu-north-1"
+
+# запуск действия
+on:
+  # Запустить PUSH и PULL запрос для главнй ветки (при изменении главной ветки будет запускатся)
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# Выполнение процессов, могут выполнятся последовательно или паралельно
+jobs:
+  # Название нашего Jobs
+  part:
+    # собираемся запустить Ubuntu (можно выбрать любой другой)
+    runs-on: ubuntu-latest
+
+    # Последовательность задач которые будут выполнятся
+    steps:
+      # собираю сайт
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+    
+      - name: Build file
+        run : |
+          npm ci
+          npm run build
+      # делаю аутинтификацию с AWS   
+      - name: Configure my AWS Cridentials # запускаю скрипт который конфигурирует AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v1
+        with: # теперь нужно ввести ACCESS KEY и SECRET KEY (создавали на вкладке Settings (Secrets)в репозитории , сами ключи генерируются на AWS IAM с правами доступа) 
+          aws-access-key-id     : ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key : ${{ secrets.AWS_SECRET_KEY }} 
+          aws-region            : ${{ env.AWS_REGION_NAME }}  
+          # теперь отправляем наш файл на S3 Bucket    
+      - name: Deploy to S3 Bucket     
+        run : aws s3 sync public s3://${{ env.S3_BACKET_NAME }}/
